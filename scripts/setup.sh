@@ -1,19 +1,42 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-# Download uv if not already installed
-if ! command -v uv &>/dev/null; then
+# Make sure we can see where uv usually installs
+export PATH="$HOME/.local/bin:$HOME/.cargo/bin:$PATH"
+
+if ! command -v uv >/dev/null 2>&1; then
   echo "Installing uv..."
   curl -LsSf https://astral.sh/uv/install.sh | sh
-  export PATH="$HOME/.cargo/bin:$PATH"
+  # refresh PATH for the current shell (installer places uv in ~/.local/bin or ~/.cargo/bin)
+  export PATH="$HOME/.local/bin:$HOME/.cargo/bin:$PATH"
 fi
 
-# Create Python 3.12 virtual environment
-echo "Creating Python 3.12 venv..."
-uv venv --python 3.12
+# Resolve uv explicitly if command -v still fails
+UV_BIN="$(command -v uv || true)"
+if [ -z "$UV_BIN" ]; then
+  for p in "$HOME/.local/bin/uv" "$HOME/.cargo/bin/uv" "/usr/local/bin/uv" "/opt/homebrew/bin/uv"; do
+    if [ -x "$p" ]; then UV_BIN="$p"; break; fi
+  done
+fi
 
-# Activate the venv
+if [ -z "$UV_BIN" ]; then
+  echo "❌ uv still not found after install."
+  echo "Contents of ~/.local/bin and ~/.cargo/bin (for debugging):"
+  ls -lah "$HOME/.local/bin" || true
+  ls -lah "$HOME/.cargo/bin" || true
+  exit 1
+fi
+
+echo "Using uv at: $UV_BIN"
+"$UV_BIN" --version
+
+echo "Creating Python 3.12 venv..."
+"$UV_BIN" venv --python 3.12 .venv
+
+# Activate now (optional)
+# shellcheck disable=SC1091
 source .venv/bin/activate
+python --version
 
 # Sync dependencies from pyproject.toml (if exists)
 if [ -f pyproject.toml ]; then

@@ -30,6 +30,9 @@ if __name__ == "__main__":
                     prompt=prompt,
                     max_tokens=4096,
                     stop=["</answer>"],
+                    temperature=1.0,
+                    top_p=1.0,
+                    seed=42,
                 )
     
                 if resp.choices[0].finish_reason == "stop":
